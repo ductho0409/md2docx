@@ -8,6 +8,10 @@ __pycache__/
 *.docx
 mermaid_images/
 
+# User content (MD files trừ README)
+*.md
+!README.md
+
 # OS
 .DS_Store
 Thumbs.db
