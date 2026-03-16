@@ -26,7 +26,7 @@ Công cụ chuyển đổi file Markdown (.md) thành Word (.docx) với chất 
 
 ```bash
 # Clone repo
-git clone https://github.com/<username>/md2docx.git
+git clone https://github.com/ductho0409/md2docx.git
 cd md2docx
 
 # Tạo virtual environment và cài dependencies
