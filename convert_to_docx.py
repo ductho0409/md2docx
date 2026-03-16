@@ -16,6 +16,12 @@ import shutil
 import time
 from pathlib import Path
 
+try:
+    from PIL import Image as PILImage
+    HAS_PILLOW = True
+except ImportError:
+    HAS_PILLOW = False
+
 from docx import Document
 from docx.shared import Pt, Cm, Inches, RGBColor, Emu
 from docx.oxml.ns import qn, nsdecls
@@ -167,6 +173,30 @@ def add_company_header(doc):
             run.bold = bold
 
 
+def trim_image_whitespace(img_path):
+    """Xóa khoảng trắng xung quanh ảnh PNG để nội dung hiển thị to hơn."""
+    if not HAS_PILLOW:
+        return
+    try:
+        img = PILImage.open(img_path)
+        # Tìm bounding box của nội dung (bỏ khoảng trắng)
+        bg = PILImage.new(img.mode, img.size, (255, 255, 255, 0) if img.mode == 'RGBA' else (255, 255, 255))
+        diff = PILImage.new(img.mode, img.size)
+        # So sánh từng pixel
+        bbox = img.getbbox()  # Trả về bounding box của phần không transparent/không trắng
+        if bbox:
+            # Thêm padding nhỏ 10px xung quanh
+            pad = 10
+            x1 = max(0, bbox[0] - pad)
+            y1 = max(0, bbox[1] - pad)
+            x2 = min(img.width, bbox[2] + pad)
+            y2 = min(img.height, bbox[3] + pad)
+            cropped = img.crop((x1, y1, x2, y2))
+            cropped.save(img_path)
+    except Exception:
+        pass  # Không lmà gì nếu lỗi, giữ nguyên ảnh gốc
+
+
 def _render_single_mermaid(code, img_path, mmdc, mmdc_config):
     """Render 1 block Mermaid → PNG. Trả về True nếu thành công."""
     tmp_mmd = os.path.join(tempfile.gettempdir(), f"mermaid_{os.getpid()}.mmd")
@@ -261,6 +291,8 @@ def render_diagrams(md_text, output_dir):
                 continue
             
             if success:
+                # Auto-trim whitespace từ ảnh PNG
+                trim_image_whitespace(img_path)
                 img_ref = f"![{label}]({img_path})"
                 md_text = md_text[:match.start()] + img_ref + md_text[match.end():]
                 print(f"      ✅ {label} → OK")
@@ -536,7 +568,7 @@ def cleanup_temp_files(img_dir, tmp_md):
 
 
 def resize_images(doc):
-    """Resize tất cả ảnh sơ đồ cho rộng hết trang, căn giữa."""
+    """Resize tất cả ảnh cho rộng hết trang, căn giữa."""
     
     section = doc.sections[0]
     page_w = section.page_width or Cm(21)
@@ -552,18 +584,13 @@ def resize_images(doc):
             shape.width = int(avail_width)
             shape.height = int(shape.height * ratio)
             count += 1
-            
-            # Căn giữa paragraph chứa ảnh
-            parent = shape._inline.getparent()
-            if parent is not None:
-                grandparent = parent.getparent()
-                if grandparent is not None and grandparent.tag.endswith('}p'):
-                    # Tìm paragraph object
-                    for para in doc.paragraphs:
-                        if para._element is grandparent:
-                            para.alignment = WD_ALIGN_PARAGRAPH.CENTER
-                            para.paragraph_format.first_line_indent = Cm(0)
-                            break
+    
+    # Căn giữa tất cả paragraph chứa ảnh và xóa indent
+    for para in doc.paragraphs:
+        if para._element.findall(qn('w:r') + '/' + qn('w:drawing')):
+            para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+            para.paragraph_format.first_line_indent = Cm(0)
+            para.paragraph_format.left_indent = Cm(0)
     
     return count
 
