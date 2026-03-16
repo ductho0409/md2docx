@@ -29,10 +29,15 @@ Công cụ chuyển đổi file Markdown (.md) thành Word (.docx) với chất 
 git clone https://github.com/ductho0409/md2docx.git
 cd md2docx
 
-# Tạo virtual environment và cài dependencies
+# Tạo virtual environment và cài Python dependencies
 python3 -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
+
+# Cài các tool hệ thống (macOS)
+arch -arm64 brew install pandoc        # Chuyển MD → DOCX
+arch -arm64 brew install d2            # Render sơ đồ D2 → PNG
+npm install -g @mermaid-js/mermaid-cli # Render sơ đồ Mermaid → PNG
 
 # (Tùy chọn) Thêm vào PATH để dùng từ mọi nơi
 echo 'export PATH="'$(pwd)':$PATH"' >> ~/.zshrc
@@ -43,8 +48,9 @@ source ~/.zshrc
 
 | Tool | Cài bằng | Mục đích |
 |---|---|---|
-| `pandoc` | `brew install pandoc` | Chuyển MD → docx thô |
+| `pandoc` | `arch -arm64 brew install pandoc` | Chuyển MD → docx thô |
 | `mmdc` (mermaid-cli) | `npm install -g @mermaid-js/mermaid-cli` | Render sơ đồ Mermaid → PNG |
+| `d2` | `arch -arm64 brew install d2` | Render sơ đồ D2 → PNG |
 | `python-docx` | `pip install -r requirements.txt` | Post-process docx |
 
 ## Cách dùng
