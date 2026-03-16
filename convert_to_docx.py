@@ -287,17 +287,22 @@ def apply_table_style(table):
     if len(table.rows) > 0:
         header_row = table.rows[0]
         for cell in header_row.cells:
+            tcPr = cell._tc.get_or_add_tcPr()
+            # Tô nền xanh đậm
             shading = parse_xml(
                 f'<w:shd {nsdecls("w")} w:fill="1F4E79" w:val="clear"/>'
             )
-            cell._tc.get_or_add_tcPr().append(shading)
+            tcPr.append(shading)
+            # Căn dọc lên trên (TOP)
+            vAlign = parse_xml(f'<w:vAlign {nsdecls("w")} w:val="top"/>')
+            tcPr.append(vAlign)
             for paragraph in cell.paragraphs:
                 paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
                 paragraph.paragraph_format.first_line_indent = Cm(0)
                 for run in paragraph.runs:
                     run.bold = True
                     run.font.color.rgb = RGBColor(0xFF, 0xFF, 0xFF)
-                    run.font.size = Pt(10)
+                    run.font.size = Pt(12)
                     run.font.name = 'Times New Roman'
 
     # ---- DATA ROWS ----
@@ -308,7 +313,7 @@ def apply_table_style(table):
             for paragraph in cell.paragraphs:
                 paragraph.paragraph_format.first_line_indent = Cm(0)
                 for run in paragraph.runs:
-                    run.font.size = Pt(10)
+                    run.font.size = Pt(12)
                     run.font.name = 'Times New Roman'
         
         # Zebra striping
