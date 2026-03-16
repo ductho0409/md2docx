@@ -49,9 +49,10 @@ def add_company_header(doc):
         header = section.header
         header.is_linked_to_previous = False
         
-        # Xóa nội dung cũ
-        for p in header.paragraphs:
-            p.clear()
+        # Xóa nội dung cũ (xóa hẳn paragraph, không chỉ clear)
+        for p in list(header.paragraphs):
+            p_element = p._element
+            p_element.getparent().remove(p_element)
         
         # ── Tạo bảng 1 hàng × 2 cột (logo | thông tin) ──
         tbl = header.add_table(rows=1, cols=2, width=Cm(17))
@@ -73,6 +74,30 @@ def add_company_header(doc):
         if existing is not None:
             tblPr.remove(existing)
         tblPr.append(parse_xml(borders_xml))
+        
+        # Bottom border xanh đậm (thay vì paragraph riêng)
+        tbl_borders_bottom = parse_xml(
+            f'<w:tblBorders {nsdecls("w")}>'
+            f'  <w:bottom w:val="single" w:sz="8" w:space="1" w:color="1F4E79"/>'
+            f'</w:tblBorders>'
+        )
+        # Merge bottom border vào existing borders
+        existing_borders = tblPr.find(qn('w:tblBorders'))
+        if existing_borders is not None:
+            bottom_el = parse_xml(f'<w:bottom {nsdecls("w")} w:val="single" w:sz="8" w:space="1" w:color="1F4E79"/>')
+            old_bottom = existing_borders.find(qn('w:bottom'))
+            if old_bottom is not None:
+                existing_borders.remove(old_bottom)
+            existing_borders.append(bottom_el)
+        
+        # Xóa cell margin để tiết kiệm chỗ
+        cellMar = parse_xml(
+            f'<w:tblCellMar {nsdecls("w")}>'
+            f'  <w:top w:w="0" w:type="dxa"/>'
+            f'  <w:bottom w:w="20" w:type="dxa"/>'
+            f'</w:tblCellMar>'
+        )
+        tblPr.append(cellMar)
         
         # Full width
         tblW = tblPr.find(qn('w:tblW'))
@@ -140,20 +165,6 @@ def add_company_header(doc):
             run.font.name = 'Times New Roman'
             run.font.color.rgb = color
             run.bold = bold
-        
-        # ── Border dưới toàn bộ header ──
-        # Thêm paragraph trống sau bảng với border dưới
-        para_border = header.add_paragraph()
-        para_border.paragraph_format.first_line_indent = Cm(0)
-        para_border.paragraph_format.space_before = Pt(2)
-        para_border.paragraph_format.space_after = Pt(4)
-        pPr = para_border._element.get_or_add_pPr()
-        pBdr = parse_xml(
-            f'<w:pBdr {nsdecls("w")}>'
-            f'  <w:bottom w:val="single" w:sz="8" w:space="1" w:color="1F4E79"/>'
-            f'</w:pBdr>'
-        )
-        pPr.append(pBdr)
 
 
 def _render_single_mermaid(code, img_path, mmdc, mmdc_config):
