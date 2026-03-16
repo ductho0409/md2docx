@@ -535,6 +535,39 @@ def cleanup_temp_files(img_dir, tmp_md):
         print(f"   🧹 Đã dọn dẹp: {', '.join(cleaned)}")
 
 
+def resize_images(doc):
+    """Resize tất cả ảnh sơ đồ cho rộng hết trang, căn giữa."""
+    
+    section = doc.sections[0]
+    page_w = section.page_width or Cm(21)
+    left_m = section.left_margin or Cm(2)
+    right_m = section.right_margin or Cm(2)
+    avail_width = page_w - left_m - right_m  # EMU
+    
+    count = 0
+    for shape in doc.inline_shapes:
+        if shape.width and shape.height and shape.width > 0:
+            # Tính tỷ lệ scale để đạt full width
+            ratio = avail_width / shape.width
+            shape.width = int(avail_width)
+            shape.height = int(shape.height * ratio)
+            count += 1
+            
+            # Căn giữa paragraph chứa ảnh
+            parent = shape._inline.getparent()
+            if parent is not None:
+                grandparent = parent.getparent()
+                if grandparent is not None and grandparent.tag.endswith('}p'):
+                    # Tìm paragraph object
+                    for para in doc.paragraphs:
+                        if para._element is grandparent:
+                            para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                            para.paragraph_format.first_line_indent = Cm(0)
+                            break
+    
+    return count
+
+
 def convert_md_to_docx(md_file, output_file=None):
     """Main conversion: MD → Mermaid render → Pandoc → Post-process → DOCX."""
     
@@ -610,6 +643,11 @@ def convert_md_to_docx(md_file, output_file=None):
             smart_column_widths(table, doc)
             table.alignment = WD_TABLE_ALIGNMENT.LEFT
         print(f"   ✅ Đã format {table_count} bảng (border, header, zebra, auto-width)")
+        
+        # Resize ảnh sơ đồ cho rộng hết trang và căn giữa
+        img_count = resize_images(doc)
+        if img_count > 0:
+            print(f"   ✅ Đã resize {img_count} ảnh sơ đồ (full-width, căn giữa)")
         
         # Save
         doc.save(output_file)
