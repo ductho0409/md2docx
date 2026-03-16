@@ -35,7 +35,10 @@ COMPANY_EMAIL = "info@setcom.com.vn"
 
 
 def add_company_header(doc):
-    """Thêm header công ty SETCOM vào mỗi trang."""
+    """Thêm header công ty SETCOM nổi bật vào mỗi trang."""
+    
+    HEADER_COLOR = RGBColor(0x1F, 0x4E, 0x79)  # Xanh đậm chủ đạo
+    HEADER_GRAY = RGBColor(0x55, 0x55, 0x55)
     
     for section in doc.sections:
         header = section.header
@@ -45,50 +48,80 @@ def add_company_header(doc):
         for p in header.paragraphs:
             p.clear()
         
-        # Paragraph chính trong header
+        # ── Dòng 1: Tên công ty nổi bật ──
         if header.paragraphs:
-            para = header.paragraphs[0]
+            para1 = header.paragraphs[0]
         else:
-            para = header.add_paragraph()
+            para1 = header.add_paragraph()
         
-        para.alignment = WD_ALIGN_PARAGRAPH.RIGHT
-        para.paragraph_format.first_line_indent = Cm(0)
-        para.paragraph_format.space_after = Pt(4)
+        para1.alignment = WD_ALIGN_PARAGRAPH.LEFT
+        para1.paragraph_format.first_line_indent = Cm(0)
+        para1.paragraph_format.space_after = Pt(1)
+        para1.paragraph_format.space_before = Pt(0)
         
-        # Tên công ty (bold)
-        run_name = para.add_run(COMPANY_NAME)
+        # Tên viết tắt (lớn, bold, xanh đậm)
+        run_name = para1.add_run(COMPANY_NAME)
         run_name.bold = True
-        run_name.font.size = Pt(8)
+        run_name.font.size = Pt(11)
         run_name.font.name = 'Times New Roman'
-        run_name.font.color.rgb = RGBColor(0x66, 0x66, 0x66)
+        run_name.font.color.rgb = HEADER_COLOR
         
-        # Separator + Hotline
-        run_sep1 = para.add_run("  |  ")
-        run_sep1.font.size = Pt(8)
-        run_sep1.font.name = 'Times New Roman'
-        run_sep1.font.color.rgb = RGBColor(0x99, 0x99, 0x99)
+        # Separator
+        run_sep = para1.add_run("  —  ")
+        run_sep.font.size = Pt(9)
+        run_sep.font.name = 'Times New Roman'
+        run_sep.font.color.rgb = HEADER_GRAY
         
-        run_phone = para.add_run(f"Hotline: {COMPANY_HOTLINE}")
+        # Tên đầy đủ
+        run_full = para1.add_run(COMPANY_FULL)
+        run_full.font.size = Pt(9)
+        run_full.font.name = 'Times New Roman'
+        run_full.font.color.rgb = HEADER_GRAY
+        
+        # ── Dòng 2: Thông tin liên hệ ──
+        para2 = header.add_paragraph()
+        para2.alignment = WD_ALIGN_PARAGRAPH.LEFT
+        para2.paragraph_format.first_line_indent = Cm(0)
+        para2.paragraph_format.space_after = Pt(4)
+        para2.paragraph_format.space_before = Pt(0)
+        
+        # Hotline
+        run_icon1 = para2.add_run("☎ ")
+        run_icon1.font.size = Pt(8)
+        run_icon1.font.name = 'Times New Roman'
+        run_icon1.font.color.rgb = HEADER_COLOR
+        
+        run_phone = para2.add_run(COMPANY_HOTLINE)
         run_phone.font.size = Pt(8)
         run_phone.font.name = 'Times New Roman'
-        run_phone.font.color.rgb = RGBColor(0x66, 0x66, 0x66)
+        run_phone.font.color.rgb = HEADER_GRAY
         
-        # Separator + Website
-        run_sep2 = para.add_run("  |  ")
+        run_sep1 = para2.add_run("    ✉ ")
+        run_sep1.font.size = Pt(8)
+        run_sep1.font.name = 'Times New Roman'
+        run_sep1.font.color.rgb = HEADER_COLOR
+        
+        run_email = para2.add_run(COMPANY_EMAIL)
+        run_email.font.size = Pt(8)
+        run_email.font.name = 'Times New Roman'
+        run_email.font.color.rgb = HEADER_GRAY
+        
+        run_sep2 = para2.add_run("    🌐 ")
         run_sep2.font.size = Pt(8)
         run_sep2.font.name = 'Times New Roman'
-        run_sep2.font.color.rgb = RGBColor(0x99, 0x99, 0x99)
+        run_sep2.font.color.rgb = HEADER_COLOR
         
-        run_web = para.add_run(COMPANY_WEBSITE)
+        run_web = para2.add_run(COMPANY_WEBSITE)
+        run_web.bold = True
         run_web.font.size = Pt(8)
         run_web.font.name = 'Times New Roman'
-        run_web.font.color.rgb = RGBColor(0x1F, 0x4E, 0x79)
+        run_web.font.color.rgb = HEADER_COLOR
         
-        # Border dưới header (đường kẻ ngăn cách)
-        pPr = para._element.get_or_add_pPr()
+        # Border dưới header (đường kẻ xanh đậm nổi bật)
+        pPr = para2._element.get_or_add_pPr()
         pBdr = parse_xml(
             f'<w:pBdr {nsdecls("w")}>'
-            f'  <w:bottom w:val="single" w:sz="4" w:space="1" w:color="CCCCCC"/>'
+            f'  <w:bottom w:val="single" w:sz="8" w:space="2" w:color="1F4E79"/>'
             f'</w:pBdr>'
         )
         pPr.append(pBdr)
