@@ -35,93 +35,122 @@ COMPANY_EMAIL = "info@setcom.com.vn"
 
 
 def add_company_header(doc):
-    """Thêm header công ty SETCOM nổi bật vào mỗi trang."""
+    """Thêm header công ty SETCOM với logo vào mỗi trang."""
     
     HEADER_COLOR = RGBColor(0x1F, 0x4E, 0x79)  # Xanh đậm chủ đạo
     HEADER_GRAY = RGBColor(0x55, 0x55, 0x55)
+    
+    # Tìm file logo (nằm trong assets/ cùng thư mục script)
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    logo_path = os.path.join(script_dir, "assets", "logo.png")
+    has_logo = os.path.exists(logo_path)
     
     for section in doc.sections:
         header = section.header
         header.is_linked_to_previous = False
         
-        # Xóa nội dung cũ nếu có
+        # Xóa nội dung cũ
         for p in header.paragraphs:
             p.clear()
         
-        # ── Dòng 1: Tên công ty nổi bật ──
-        if header.paragraphs:
-            para1 = header.paragraphs[0]
+        # ── Tạo bảng 1 hàng × 2 cột (logo | thông tin) ──
+        tbl = header.add_table(rows=1, cols=2, width=Cm(17))
+        tbl.alignment = WD_TABLE_ALIGNMENT.LEFT
+        
+        # Xóa border bảng (bảng ẩn, chỉ dùng để layout)
+        tbl_element = tbl._tbl
+        tblPr = tbl_element.tblPr if tbl_element.tblPr is not None else parse_xml(f'<w:tblPr {nsdecls("w")} />')
+        borders_xml = f'''
+        <w:tblBorders {nsdecls("w")}>
+            <w:top w:val="none" w:sz="0" w:space="0" w:color="auto"/>
+            <w:left w:val="none" w:sz="0" w:space="0" w:color="auto"/>
+            <w:bottom w:val="none" w:sz="0" w:space="0" w:color="auto"/>
+            <w:right w:val="none" w:sz="0" w:space="0" w:color="auto"/>
+            <w:insideH w:val="none" w:sz="0" w:space="0" w:color="auto"/>
+            <w:insideV w:val="none" w:sz="0" w:space="0" w:color="auto"/>
+        </w:tblBorders>'''
+        existing = tblPr.find(qn('w:tblBorders'))
+        if existing is not None:
+            tblPr.remove(existing)
+        tblPr.append(parse_xml(borders_xml))
+        
+        # Full width
+        tblW = tblPr.find(qn('w:tblW'))
+        if tblW is None:
+            tblW = parse_xml(f'<w:tblW {nsdecls("w")} w:w="5000" w:type="pct"/>')
+            tblPr.append(tblW)
         else:
-            para1 = header.add_paragraph()
+            tblW.set(qn('w:w'), '5000')
+            tblW.set(qn('w:type'), 'pct')
         
-        para1.alignment = WD_ALIGN_PARAGRAPH.LEFT
-        para1.paragraph_format.first_line_indent = Cm(0)
-        para1.paragraph_format.space_after = Pt(1)
-        para1.paragraph_format.space_before = Pt(0)
+        # ── Cột trái: Logo ──
+        cell_logo = tbl.cell(0, 0)
+        cell_logo.width = Cm(4)
+        para_logo = cell_logo.paragraphs[0]
+        para_logo.alignment = WD_ALIGN_PARAGRAPH.LEFT
+        para_logo.paragraph_format.first_line_indent = Cm(0)
+        para_logo.paragraph_format.space_before = Pt(0)
+        para_logo.paragraph_format.space_after = Pt(0)
         
-        # Tên viết tắt (lớn, bold, xanh đậm)
-        run_name = para1.add_run(COMPANY_NAME)
-        run_name.bold = True
-        run_name.font.size = Pt(11)
-        run_name.font.name = 'Times New Roman'
-        run_name.font.color.rgb = HEADER_COLOR
+        if has_logo:
+            run_logo = para_logo.add_run()
+            run_logo.add_picture(logo_path, height=Cm(1.0))
+        else:
+            # Fallback: chữ SETCOM lớn nếu không có logo
+            run_name = para_logo.add_run(COMPANY_NAME)
+            run_name.bold = True
+            run_name.font.size = Pt(14)
+            run_name.font.name = 'Times New Roman'
+            run_name.font.color.rgb = HEADER_COLOR
         
-        # Separator
-        run_sep = para1.add_run("  —  ")
-        run_sep.font.size = Pt(9)
-        run_sep.font.name = 'Times New Roman'
-        run_sep.font.color.rgb = HEADER_GRAY
+        # ── Cột phải: Thông tin công ty ──
+        cell_info = tbl.cell(0, 1)
         
-        # Tên đầy đủ
-        run_full = para1.add_run(COMPANY_FULL)
-        run_full.font.size = Pt(9)
+        # Dòng 1: Tên đầy đủ
+        para_info1 = cell_info.paragraphs[0]
+        para_info1.alignment = WD_ALIGN_PARAGRAPH.RIGHT
+        para_info1.paragraph_format.first_line_indent = Cm(0)
+        para_info1.paragraph_format.space_before = Pt(0)
+        para_info1.paragraph_format.space_after = Pt(1)
+        
+        run_full = para_info1.add_run(COMPANY_FULL)
+        run_full.bold = True
+        run_full.font.size = Pt(8)
         run_full.font.name = 'Times New Roman'
-        run_full.font.color.rgb = HEADER_GRAY
+        run_full.font.color.rgb = HEADER_COLOR
         
-        # ── Dòng 2: Thông tin liên hệ ──
-        para2 = header.add_paragraph()
-        para2.alignment = WD_ALIGN_PARAGRAPH.LEFT
-        para2.paragraph_format.first_line_indent = Cm(0)
-        para2.paragraph_format.space_after = Pt(4)
-        para2.paragraph_format.space_before = Pt(0)
+        # Dòng 2: Thông tin liên hệ
+        para_info2 = cell_info.add_paragraph()
+        para_info2.alignment = WD_ALIGN_PARAGRAPH.RIGHT
+        para_info2.paragraph_format.first_line_indent = Cm(0)
+        para_info2.paragraph_format.space_before = Pt(0)
+        para_info2.paragraph_format.space_after = Pt(0)
         
-        # Hotline
-        run_icon1 = para2.add_run("☎ ")
-        run_icon1.font.size = Pt(8)
-        run_icon1.font.name = 'Times New Roman'
-        run_icon1.font.color.rgb = HEADER_COLOR
+        contact_parts = [
+            ("☎ ", HEADER_COLOR, False),
+            (COMPANY_HOTLINE, HEADER_GRAY, False),
+            ("    ✉ ", HEADER_COLOR, False),
+            (COMPANY_EMAIL, HEADER_GRAY, False),
+            ("    🌐 ", HEADER_COLOR, False),
+            (COMPANY_WEBSITE, HEADER_COLOR, True),
+        ]
+        for text, color, bold in contact_parts:
+            run = para_info2.add_run(text)
+            run.font.size = Pt(7)
+            run.font.name = 'Times New Roman'
+            run.font.color.rgb = color
+            run.bold = bold
         
-        run_phone = para2.add_run(COMPANY_HOTLINE)
-        run_phone.font.size = Pt(8)
-        run_phone.font.name = 'Times New Roman'
-        run_phone.font.color.rgb = HEADER_GRAY
-        
-        run_sep1 = para2.add_run("    ✉ ")
-        run_sep1.font.size = Pt(8)
-        run_sep1.font.name = 'Times New Roman'
-        run_sep1.font.color.rgb = HEADER_COLOR
-        
-        run_email = para2.add_run(COMPANY_EMAIL)
-        run_email.font.size = Pt(8)
-        run_email.font.name = 'Times New Roman'
-        run_email.font.color.rgb = HEADER_GRAY
-        
-        run_sep2 = para2.add_run("    🌐 ")
-        run_sep2.font.size = Pt(8)
-        run_sep2.font.name = 'Times New Roman'
-        run_sep2.font.color.rgb = HEADER_COLOR
-        
-        run_web = para2.add_run(COMPANY_WEBSITE)
-        run_web.bold = True
-        run_web.font.size = Pt(8)
-        run_web.font.name = 'Times New Roman'
-        run_web.font.color.rgb = HEADER_COLOR
-        
-        # Border dưới header (đường kẻ xanh đậm nổi bật)
-        pPr = para2._element.get_or_add_pPr()
+        # ── Border dưới toàn bộ header ──
+        # Thêm paragraph trống sau bảng với border dưới
+        para_border = header.add_paragraph()
+        para_border.paragraph_format.first_line_indent = Cm(0)
+        para_border.paragraph_format.space_before = Pt(2)
+        para_border.paragraph_format.space_after = Pt(4)
+        pPr = para_border._element.get_or_add_pPr()
         pBdr = parse_xml(
             f'<w:pBdr {nsdecls("w")}>'
-            f'  <w:bottom w:val="single" w:sz="8" w:space="2" w:color="1F4E79"/>'
+            f'  <w:bottom w:val="single" w:sz="8" w:space="1" w:color="1F4E79"/>'
             f'</w:pBdr>'
         )
         pPr.append(pBdr)
