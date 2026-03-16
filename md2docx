@@ -1,0 +1,5 @@
+#!/bin/bash
+# md2docx - Chuyển Markdown sang Word (.docx) đẹp
+# Cách dùng: md2docx file.md [output.docx]
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+"$SCRIPT_DIR/venv/bin/python3" "$SCRIPT_DIR/convert_to_docx.py" "$@"
