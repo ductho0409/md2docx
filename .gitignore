@@ -7,6 +7,7 @@ __pycache__/
 # Output files
 *.docx
 mermaid_images/
+diagram_images/
 
 # User content (MD files trừ README)
 *.md

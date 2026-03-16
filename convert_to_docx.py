@@ -127,60 +127,109 @@ def add_company_header(doc):
         pPr.append(pBdr)
 
 
-def render_mermaid_diagrams(md_text, output_dir):
-    """Tìm tất cả block ```mermaid ... ```, render thành PNG, thay bằng ![img](path)."""
+def _render_single_mermaid(code, img_path, mmdc, mmdc_config):
+    """Render 1 block Mermaid → PNG. Trả về True nếu thành công."""
+    tmp_mmd = os.path.join(tempfile.gettempdir(), f"mermaid_{os.getpid()}.mmd")
+    with open(tmp_mmd, "w", encoding="utf-8") as f:
+        f.write(code)
+    try:
+        result = subprocess.run(
+            [mmdc, "-i", tmp_mmd, "-o", img_path, "-w", "1200", "-s", "2",
+             "--configFile", mmdc_config],
+            capture_output=True, text=True, timeout=30
+        )
+        return result.returncode == 0 and os.path.exists(img_path)
+    finally:
+        if os.path.exists(tmp_mmd):
+            os.remove(tmp_mmd)
+
+
+def _render_single_d2(code, img_path, d2_bin):
+    """Render 1 block D2 → PNG. Trả về True nếu thành công."""
+    tmp_d2 = os.path.join(tempfile.gettempdir(), f"d2_{os.getpid()}.d2")
+    with open(tmp_d2, "w", encoding="utf-8") as f:
+        f.write(code)
+    try:
+        result = subprocess.run(
+            [d2_bin, "--layout=elk", tmp_d2, img_path],
+            capture_output=True, text=True, timeout=30
+        )
+        return result.returncode == 0 and os.path.exists(img_path)
+    finally:
+        if os.path.exists(tmp_d2):
+            os.remove(tmp_d2)
+
+
+def render_diagrams(md_text, output_dir):
+    """Tìm tất cả block ```mermaid và ```d2, render thành PNG, thay bằng ![img](path).
     
-    mmdc = shutil.which("mmdc")
-    if not mmdc:
-        print("   ⚠️  mmdc không tìm thấy, bỏ qua render Mermaid.")
-        print("      Cài bằng: npm install -g @mermaid-js/mermaid-cli")
-        return md_text, None
+    Hỗ trợ mix: 1 file MD có thể chứa cả Mermaid lẫn D2.
+    """
     
-    pattern = re.compile(r'```mermaid\n(.*?)```', re.DOTALL)
+    # Tìm tất cả diagram blocks (mermaid hoặc d2)
+    pattern = re.compile(r'```(mermaid|d2)\n(.*?)```', re.DOTALL)
     matches = list(pattern.finditer(md_text))
     
     if not matches:
-        print("   ℹ️  Không có sơ đồ Mermaid.")
+        print("   ℹ️  Không có sơ đồ nào (Mermaid/D2).")
         return md_text, None
-
-    print(f"   📊 Tìm thấy {len(matches)} sơ đồ Mermaid, đang render...")
     
-    img_dir = os.path.join(output_dir, "mermaid_images")
+    # Đếm theo loại
+    mermaid_count = sum(1 for m in matches if m.group(1) == 'mermaid')
+    d2_count = sum(1 for m in matches if m.group(1) == 'd2')
+    
+    summary_parts = []
+    if mermaid_count > 0:
+        summary_parts.append(f"{mermaid_count} Mermaid")
+    if d2_count > 0:
+        summary_parts.append(f"{d2_count} D2")
+    print(f"   📊 Tìm thấy {len(matches)} sơ đồ ({', '.join(summary_parts)}), đang render...")
+    
+    # Kiểm tra tools có sẵn
+    mmdc = shutil.which("mmdc")
+    d2_bin = shutil.which("d2")
+    
+    if mermaid_count > 0 and not mmdc:
+        print("   ⚠️  mmdc không tìm thấy — bỏ qua Mermaid. Cài: npm install -g @mermaid-js/mermaid-cli")
+    if d2_count > 0 and not d2_bin:
+        print("   ⚠️  d2 không tìm thấy — bỏ qua D2. Cài: brew install d2")
+    
+    img_dir = os.path.join(output_dir, "diagram_images")
     os.makedirs(img_dir, exist_ok=True)
-
-    # Mermaid config for better rendering
+    
+    # Mermaid config
     mmdc_config = os.path.join(tempfile.gettempdir(), "mermaid_config.json")
-    with open(mmdc_config, "w") as f:
-        f.write('{"theme": "default", "themeVariables": {"fontSize": "14px"}}')
-
-    for i, match in enumerate(reversed(matches)):
-        mermaid_code = match.group(1).strip()
-        img_path = os.path.join(img_dir, f"diagram_{i+1}.png")
-        
-        # Write mermaid code to temp file
-        tmp_mmd = os.path.join(tempfile.gettempdir(), f"diagram_{i}.mmd")
-        with open(tmp_mmd, "w", encoding="utf-8") as f:
-            f.write(mermaid_code)
+    if mmdc:
+        with open(mmdc_config, "w") as f:
+            f.write('{"theme": "default", "themeVariables": {"fontSize": "14px"}}')
+    
+    # Render từ cuối lên đầu (để index không bị lệch)
+    for i, match in enumerate(reversed(matches), 1):
+        diagram_type = match.group(1)  # 'mermaid' hoặc 'd2'
+        diagram_code = match.group(2).strip()
+        img_path = os.path.join(img_dir, f"diagram_{i}.png")
+        label = f"Sơ đồ {i} [{diagram_type.upper()}]"
         
         try:
-            result = subprocess.run(
-                [mmdc, "-i", tmp_mmd, "-o", img_path, "-w", "1200", "-s", "2",
-                 "--configFile", mmdc_config],
-                capture_output=True, text=True, timeout=30
-            )
-            if result.returncode == 0 and os.path.exists(img_path):
-                img_ref = f"![Sơ đồ {i+1}]({img_path})"
-                md_text = md_text[:match.start()] + img_ref + md_text[match.end():]
-                print(f"      ✅ Sơ đồ {i+1} → OK")
+            success = False
+            if diagram_type == 'mermaid' and mmdc:
+                success = _render_single_mermaid(diagram_code, img_path, mmdc, mmdc_config)
+            elif diagram_type == 'd2' and d2_bin:
+                success = _render_single_d2(diagram_code, img_path, d2_bin)
             else:
-                print(f"      ⚠️ Sơ đồ {i+1} render thất bại: {result.stderr[:200]}")
+                print(f"      ⏭️  {label} — bỏ qua (thiếu tool)")
+                continue
+            
+            if success:
+                img_ref = f"![{label}]({img_path})"
+                md_text = md_text[:match.start()] + img_ref + md_text[match.end():]
+                print(f"      ✅ {label} → OK")
+            else:
+                print(f"      ⚠️ {label} render thất bại")
         except subprocess.TimeoutExpired:
-            print(f"      ⚠️ Sơ đồ {i+1} timeout (>30s)")
+            print(f"      ⚠️ {label} timeout (>30s)")
         except Exception as e:
-            print(f"      ❌ Sơ đồ {i+1} lỗi: {e}")
-        finally:
-            if os.path.exists(tmp_mmd):
-                os.remove(tmp_mmd)
+            print(f"      ❌ {label} lỗi: {e}")
     
     return md_text, img_dir
 
@@ -431,11 +480,11 @@ def cleanup_temp_files(img_dir, tmp_md):
         os.remove(tmp_md)
         cleaned.append("processed.md")
     
-    # Xóa thư mục mermaid_images
+    # Xóa thư mục diagram_images
     if img_dir and os.path.exists(img_dir):
         file_count = len(os.listdir(img_dir))
         shutil.rmtree(img_dir)
-        cleaned.append(f"mermaid_images/ ({file_count} files)")
+        cleaned.append(f"diagram_images/ ({file_count} files)")
     
     if cleaned:
         print(f"   🧹 Đã dọn dẹp: {', '.join(cleaned)}")
@@ -472,10 +521,10 @@ def convert_md_to_docx(md_file, output_file=None):
             md_text = f.read()
         print(f"   ✅ Đọc thành công ({len(md_text):,} ký tự)")
 
-        # ── Step 2: Render Mermaid diagrams ──
+        # ── Step 2: Render diagrams (Mermaid + D2) ──
         print()
-        print("[2/5] 🎨 Xử lý sơ đồ Mermaid...")
-        md_text_processed, img_dir = render_mermaid_diagrams(md_text, md_dir)
+        print("[2/5] 🎨 Xử lý sơ đồ (Mermaid / D2)...")
+        md_text_processed, img_dir = render_diagrams(md_text, md_dir)
         
         # Write processed MD to temp file
         with open(tmp_md, 'w', encoding='utf-8') as f:
