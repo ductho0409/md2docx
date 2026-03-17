@@ -46,10 +46,22 @@ def add_company_header(doc):
     HEADER_COLOR = RGBColor(0x1F, 0x4E, 0x79)  # Xanh đậm chủ đạo
     HEADER_GRAY = RGBColor(0x55, 0x55, 0x55)
     
-    # Tìm file logo (nằm trong assets/ cùng thư mục script)
+    # Tìm file logo: thử file trước, fallback sang base64 nhúng sẵn
     script_dir = os.path.dirname(os.path.abspath(__file__))
     logo_path = os.path.join(script_dir, "assets", "logo.png")
-    has_logo = os.path.exists(logo_path)
+    
+    if not os.path.exists(logo_path):
+        # Fallback: giải mã base64 nhúng trong logo_data.py
+        try:
+            import base64
+            from logo_data import LOGO_BASE64
+            logo_path = os.path.join(tempfile.gettempdir(), "setcom_logo.png")
+            with open(logo_path, "wb") as f:
+                f.write(base64.b64decode(LOGO_BASE64))
+        except Exception:
+            logo_path = None
+    
+    has_logo = logo_path is not None and os.path.exists(logo_path)
     
     for section in doc.sections:
         header = section.header
