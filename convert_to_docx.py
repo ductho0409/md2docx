@@ -465,10 +465,29 @@ def smart_column_widths(table, doc):
         header = headers[col_idx]
         max_len = col_max_len[col_idx]
         
-        if header in NARROW_KEYWORDS or max_len <= 5:
+        # Kiểm tra cột có chứa chủ yếu là số không (giá, SL, STT)
+        col_is_numeric = False
+        for row_idx, row in enumerate(table.rows):
+            if row_idx == 0:
+                continue
+            if row_idx > 10:
+                break
+            cell_text = row.cells[col_idx].text.strip()
+            if cell_text and _is_numeric_cell(cell_text):
+                col_is_numeric = True
+                break
+        
+        # Cột giá tiền cần đủ rộng
+        is_price_col = any(kw in header for kw in ['GIÁ', 'TIỀN', 'VND', 'COST', 'PRICE'])
+        
+        if header in NARROW_KEYWORDS or (max_len <= 3 and not col_is_numeric):
             w = 2.0  # hẹp nhưng vẫn đọc được
+        elif is_price_col or (col_is_numeric and max_len >= 7):
+            w = max(3.5, max_len / 2.5)  # đủ rộng cho số tiền
         elif any(kw in header for kw in WIDE_KEYWORDS) or max_len > 40:
             w = min(10.0, max(5.0, max_len / 5.0))  # rộng, cap 10
+        elif col_is_numeric:
+            w = max(3.0, max_len / 2.0)  # số ngắn vẫn cần đủ chỗ
         elif max_len > 20:
             w = 4.0
         elif max_len > 10:
