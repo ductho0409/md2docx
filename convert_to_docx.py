@@ -306,6 +306,19 @@ def render_diagrams(md_text, output_dir):
     return md_text, img_dir
 
 
+def _is_numeric_cell(text):
+    """Kiểm tra cell có chứa chủ yếu là số (giá tiền, SL, STT, %)."""
+    if not text:
+        return False
+    # Loại bỏ khoảng trắng
+    cleaned = text.replace(' ', '')
+    if not cleaned:
+        return False
+    # Đếm ký tự số và dấu phân cách
+    numeric_chars = sum(1 for c in cleaned if c in '0123456789.,đ₫%×xX')
+    return numeric_chars / len(cleaned) > 0.5
+
+
 def apply_table_style(table):
     """Thêm border, tô header, full-width, xóa indent trong cell."""
     
@@ -382,11 +395,23 @@ def apply_table_style(table):
         if row_idx == 0:
             continue
         for cell in row.cells:
+            cell_text = cell.text.strip()
+            is_numeric = _is_numeric_cell(cell_text)
+            
             for paragraph in cell.paragraphs:
                 paragraph.paragraph_format.first_line_indent = Cm(0)
                 for run in paragraph.runs:
                     run.font.size = Pt(12)
                     run.font.name = 'Times New Roman'
+            
+            # Không cho ngắt dòng ô chứa số (giá tiền, SL, STT...)
+            if is_numeric:
+                tcPr = cell._tc.get_or_add_tcPr()
+                noWrap = parse_xml(f'<w:noWrap {nsdecls("w")}/>')
+                tcPr.append(noWrap)
+                # Căn phải cho ô số
+                for paragraph in cell.paragraphs:
+                    paragraph.alignment = WD_ALIGN_PARAGRAPH.RIGHT
         
         # Zebra striping
         if row_idx % 2 == 0:
