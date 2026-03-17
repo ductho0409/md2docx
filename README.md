@@ -53,6 +53,23 @@ source ~/.zshrc
 | `d2` | `arch -arm64 brew install d2` | Render sơ đồ D2 → PNG |
 | `python-docx` | `pip install -r requirements.txt` | Post-process docx |
 
+### Cài đặt Right-click Menu (tùy chọn)
+
+Thêm "Chuyển MD sang DOCX" vào menu chuột phải khi click file `.md`:
+
+**macOS (Finder):**
+```bash
+bash install_macos.sh
+```
+→ Click phải file `.md` → **Quick Actions** → **Chuyển MD sang DOCX**
+
+**Windows (Explorer):**
+```cmd
+REM Chạy với quyền Administrator
+install_windows.bat
+```
+→ Click phải file `.md` → **Chuyển MD sang DOCX**
+
 ## Cách dùng
 
 ```bash
