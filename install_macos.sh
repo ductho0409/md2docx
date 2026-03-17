@@ -35,36 +35,58 @@ if ! command -v md2docx &>/dev/null; then
     export PATH="$SCRIPT_DIR:$PATH"
 fi
 
+# Xóa workflow cũ nếu có
+rm -rf "$WORKFLOW_DIR"
+
 # Tạo Automator Quick Action
 echo "[1/2] 📦 Tạo Quick Action..."
 
-rm -rf "$WORKFLOW_DIR"
 mkdir -p "$WORKFLOW_DIR/Contents"
 
-# Info.plist
-cat > "$WORKFLOW_DIR/Contents/Info.plist" << 'PLIST'
+# === Info.plist ===
+cat > "$WORKFLOW_DIR/Contents/Info.plist" << 'EOF'
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-    <key>NSServices</key>
-    <array>
-        <dict>
-            <key>NSMenuItem</key>
-            <dict>
-                <key>default</key>
-                <string>Chuyển MD sang DOCX</string>
-            </dict>
-            <key>NSMessage</key>
-            <string>runWorkflowAsService</string>
-        </dict>
-    </array>
+	<key>CFBundleName</key>
+	<string>Chuyển MD sang DOCX</string>
+	<key>CFBundleIdentifier</key>
+	<string>com.setcom.md2docx.quickaction</string>
+	<key>NSServices</key>
+	<array>
+		<dict>
+			<key>NSMenuItem</key>
+			<dict>
+				<key>default</key>
+				<string>Chuyển MD sang DOCX</string>
+			</dict>
+			<key>NSMessage</key>
+			<string>runWorkflowAsService</string>
+			<key>NSSendFileTypes</key>
+			<array>
+				<string>net.daringfireball.markdown</string>
+				<string>public.plain-text</string>
+				<string>public.data</string>
+			</array>
+		</dict>
+	</array>
 </dict>
 </plist>
-PLIST
+EOF
 
-# document.wflow
-cat > "$WORKFLOW_DIR/Contents/document.wflow" << WFLOW
+# Shell command (escaped for plist)
+SHELL_CMD="export PATH=\"${SCRIPT_DIR}:\$PATH\"
+for f in \"\$@\"; do
+    if [[ \"\$f\" == *.md ]] || [[ \"\$f\" == *.markdown ]]; then
+        \"${SCRIPT_DIR}/md2docx\" \"\$f\" 2>&amp;1
+        docx=\"\${f%.md}.docx\"
+        osascript -e \"display notification \\\\\"Đã tạo: \$(basename \\\\\"\$docx\\\\\")\\\\\" with title \\\\\"md2docx\\\\\" sound name \\\\\"Glass\\\\\"\" 2>/dev/null
+    fi
+done"
+
+# === document.wflow ===
+cat > "$WORKFLOW_DIR/Contents/document.wflow" << ENDWFLOW
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
@@ -105,14 +127,6 @@ cat > "$WORKFLOW_DIR/Contents/document.wflow" << WFLOW
 				</array>
 				<key>AMIconName</key>
 				<string>com.apple.RunShellScript</string>
-				<key>AMKeywords</key>
-				<array>
-					<string>Shell</string>
-					<string>Script</string>
-					<string>Command</string>
-					<string>Run</string>
-					<string>Unix</string>
-				</array>
 				<key>AMParameterProperties</key>
 				<dict>
 					<key>COMMAND_STRING</key>
@@ -135,8 +149,6 @@ cat > "$WORKFLOW_DIR/Contents/document.wflow" << WFLOW
 						<string>com.apple.cocoa.path</string>
 					</array>
 				</dict>
-				<key>AMRequiredResources</key>
-				<array/>
 				<key>ActionBundlePath</key>
 				<string>/System/Library/Automator/Run Shell Script.action</string>
 				<key>ActionName</key>
@@ -144,17 +156,7 @@ cat > "$WORKFLOW_DIR/Contents/document.wflow" << WFLOW
 				<key>ActionParameters</key>
 				<dict>
 					<key>COMMAND_STRING</key>
-					<string>export PATH="$SCRIPT_DIR:\$PATH"
-
-for f in "\$@"; do
-    if [[ "\$f" == *.md ]]; then
-        "$SCRIPT_DIR/md2docx" "\$f"
-        
-        # Thông báo hoàn tất
-        docx="\${f%.md}.docx"
-        osascript -e "display notification \"Đã tạo: \$(basename \"\$docx\")\" with title \"md2docx\" sound name \"Glass\""
-    fi
-done</string>
+					<string>${SHELL_CMD}</string>
 					<key>CheckedForUserDefaultShell</key>
 					<true/>
 					<key>inputMethod</key>
@@ -179,19 +181,16 @@ done</string>
 				<key>Class Name</key>
 				<string>RunShellScriptAction</string>
 				<key>InputUUID</key>
-				<string>A1234567-B123-C123-D123-E12345678901</string>
+				<string>A7B3C4D5-E6F7-4A8B-9C0D-E1F2A3B4C5D6</string>
 				<key>Keywords</key>
 				<array>
 					<string>Shell</string>
 					<string>Script</string>
-					<string>Command</string>
-					<string>Run</string>
-					<string>Unix</string>
 				</array>
 				<key>OutputUUID</key>
-				<string>F1234567-B123-C123-D123-E12345678902</string>
+				<string>B8C4D5E6-F7A8-4B9C-0D1E-F2A3B4C5D6E7</string>
 				<key>UUID</key>
-				<string>01234567-B123-C123-D123-E12345678903</string>
+				<string>C9D5E6F7-A8B9-4C0D-1E2F-A3B4C5D6E7F8</string>
 				<key>UnlocalizedApplications</key>
 				<array>
 					<string>Automator</string>
@@ -219,18 +218,45 @@ done</string>
 	<dict/>
 	<key>workflowMetaData</key>
 	<dict>
+		<key>applicationBundleIDsByPath</key>
+		<dict/>
+		<key>applicationPaths</key>
+		<array/>
+		<key>inputTypeIdentifier</key>
+		<string>com.apple.Automator.fileSystemObject</string>
+		<key>outputTypeIdentifier</key>
+		<string>com.apple.Automator.nothing</string>
+		<key>presentationMode</key>
+		<integer>15</integer>
+		<key>processesInput</key>
+		<integer>0</integer>
+		<key>serviceApplicationBundleID</key>
+		<string>com.apple.finder</string>
+		<key>serviceApplicationPath</key>
+		<string>/System/Applications/Finder.app</string>
+		<key>serviceInputTypeIdentifier</key>
+		<string>com.apple.Automator.fileSystemObject</string>
+		<key>serviceOutputTypeIdentifier</key>
+		<string>com.apple.Automator.nothing</string>
+		<key>serviceProcessesInput</key>
+		<integer>0</integer>
+		<key>systemImageName</key>
+		<string>NSActionTemplate</string>
+		<key>useAutomaticInputType</key>
+		<integer>0</integer>
 		<key>workflowTypeIdentifier</key>
 		<string>com.apple.Automator.servicesMenu</string>
 	</dict>
 </dict>
 </plist>
-WFLOW
+ENDWFLOW
 
 echo "   ✅ Quick Action tạo tại: $WORKFLOW_DIR"
 
-# Refresh Services
-echo "[2/2] 🔄 Refresh Services cache..."
+# Refresh Services + rebuild LaunchServices
+echo "[2/2] 🔄 Refresh Services..."
 /System/Library/CoreServices/pbs -flush 2>/dev/null || true
+/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -kill -r -domain local -domain system -domain user 2>/dev/null || true
 
 echo ""
 echo "============================================================"
@@ -241,8 +267,10 @@ echo "  1. Click phải vào file .md trong Finder"
 echo "  2. Chọn: Quick Actions → \"Chuyển MD sang DOCX\""
 echo "  3. File .docx sẽ được tạo tại cùng thư mục"
 echo ""
-echo "  💡 Nếu không thấy menu, vào:"
-echo "     System Settings → Privacy & Security → Extensions"
-echo "     → Finder Extensions → bật \"Chuyển MD sang DOCX\""
+echo "  💡 Nếu không thấy menu ngay, thử:"
+echo "     - Đóng và mở lại Finder (Cmd+Q Finder)"
+echo "     - Hoặc restart máy"
+echo "     - System Settings → Privacy & Security → Extensions"
+echo "       → Finder → bật \"Chuyển MD sang DOCX\""
 echo "============================================================"
 echo ""
