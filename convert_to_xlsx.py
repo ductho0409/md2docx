@@ -64,6 +64,13 @@ def parse_md_blocks(md_text):
             i += 1
             continue
 
+        # ── Horizontal rule (---) → spacing block ──
+        if re.match(r'^[-_*]{3,}\s*$', line.strip()):
+            blocks.append({'type': 'blank'})
+            blocks.append({'type': 'blank'})
+            i += 1
+            continue
+
         # ── Heading ──
         heading_match = re.match(r'^(#{1,6})\s+(.+)', line)
         if heading_match:
@@ -254,11 +261,11 @@ def render_heading(ws, row, level, content):
     """Render 1 heading vào 1 merged row."""
     # Config theo level
     config = {
-        1: {'size': 16, 'bold': True,  'italic': False, 'color': COLOR_HEADER, 'height': 28},
-        2: {'size': 14, 'bold': True,  'italic': False, 'color': COLOR_H2,     'height': 24},
-        3: {'size': 12, 'bold': True,  'italic': True,  'color': COLOR_H3,     'height': 20},
-        4: {'size': 12, 'bold': True,  'italic': False, 'color': COLOR_H3,     'height': 18},
-        5: {'size': 11, 'bold': False, 'italic': True,  'color': COLOR_H3,     'height': 16},
+        1: {'size': 16, 'bold': True,  'italic': False, 'color': COLOR_HEADER, 'height': 36},
+        2: {'size': 14, 'bold': True,  'italic': False, 'color': COLOR_H2,     'height': 26},
+        3: {'size': 12, 'bold': True,  'italic': True,  'color': COLOR_H3,     'height': 22},
+        4: {'size': 12, 'bold': True,  'italic': False, 'color': COLOR_H3,     'height': 20},
+        5: {'size': 11, 'bold': False, 'italic': True,  'color': COLOR_H3,     'height': 18},
         6: {'size': 11, 'bold': False, 'italic': False, 'color': COLOR_H3,     'height': 16},
     }
     cfg = config.get(level, config[3])
