@@ -1,0 +1,6 @@
+#!/bin/bash
+# Wrapper: md2xlsx — Chuyển Markdown sang Excel
+# Sử dụng: md2xlsx <file.md> [output.xlsx]
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+"$SCRIPT_DIR/venv/bin/python3" "$SCRIPT_DIR/convert_to_xlsx.py" "$@"
