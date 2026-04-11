@@ -624,21 +624,30 @@ def cleanup_temp_files(img_dir, tmp_md):
 
 
 def resize_images(doc):
-    """Resize tất cả ảnh cho rộng hết trang, căn giữa."""
-    
+    """Resize ảnh vừa trong khung trang A4: không tràn chiều ngang, không tràn chiều dọc."""
+
     section = doc.sections[0]
     page_w = section.page_width or Cm(21)
+    page_h = section.page_height or Cm(29.7)
     left_m = section.left_margin or Cm(2)
     right_m = section.right_margin or Cm(2)
+    top_m = section.top_margin or Cm(2)
+    bottom_m = section.bottom_margin or Cm(2)
     avail_width = page_w - left_m - right_m  # EMU
-    
+    # Chừa thêm buffer cho header công ty + caption ảnh (~2cm)
+    avail_height = page_h - top_m - bottom_m - Cm(2.0)
+
     count = 0
     for shape in doc.inline_shapes:
-        if shape.width and shape.height and shape.width > 0:
-            # Tính tỷ lệ scale để đạt full width
-            ratio = avail_width / shape.width
-            shape.width = int(avail_width)
-            shape.height = int(shape.height * ratio)
+        if shape.width and shape.height and shape.width > 0 and shape.height > 0:
+            orig_w = shape.width
+            orig_h = shape.height
+            ratio_w = avail_width / orig_w
+            ratio_h = avail_height / orig_h
+            # Chọn ratio nhỏ hơn để ảnh vừa cả 2 chiều (không tràn trang)
+            ratio = min(ratio_w, ratio_h)
+            shape.width = int(orig_w * ratio)
+            shape.height = int(orig_h * ratio)
             count += 1
     
     # Căn giữa tất cả paragraph chứa ảnh và xóa indent
